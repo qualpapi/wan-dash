@@ -7,15 +7,14 @@ const BRIDGE_URL = "https://expression-vernon-judgment-freight.trycloudflare.com
 function App() {
   const [report, setReport] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [target, setTarget] = useState("USDJPY=X"); // Tracks current ticker
+  const [target, setTarget] = useState("USDJPY=X");
   const [history, setHistory] = useState<any[]>(() => {
     const saved = localStorage.getItem('wan_history');
     return saved ? JSON.parse(saved) : [];
   });
 
-  // REGEX PARSER: Extracts clean data from Llama's tags
   const parseData = (text: string, tag: string) => {
-    if (!text) return "Scanning...";
+    if (!text) return "N/A";
     const regex = new RegExp(`${tag}:?\\s*(.*)`, 'i');
     const match = text.match(regex);
     return match ? match[1].split('\n')[0].trim() : "N/A";
@@ -25,16 +24,14 @@ function App() {
     setLoading(true);
     try {
       const res = await axios.post(`${BRIDGE_URL}/analyze`, { pair });
-      const newData = res.data;
-      setReport(newData);
+      setReport(res.data);
 
-      // PERSISTENCE: Record the scan to history
       const updatedHistory = [
         { 
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), 
-          stance: newData.metrics.stance, 
-          regime: parseData(newData.data, "REGIME"),
-          ticker: pair 
+          ticker: pair,
+          regime: res.data.engine.deterministic_regime,
+          confidence: res.data.engine.confidence
         },
         ...history
       ].slice(0, 5);
@@ -48,12 +45,13 @@ function App() {
     }
   };
 
-  // GPT CONSULT BRIDGE: Now includes Red-Team Constraints
   const copyForConsult = () => {
     if (!report) return;
-    const text = `SENTINEL_V9.1_REPORT:
+    const text = `SENTINEL_V9.2_REPORT:
 TICKER: ${target}
-REGIME: ${parseData(report.data, "REGIME")}
+REGIME: ${report.engine.deterministic_regime}
+CONFIDENCE: ${report.engine.confidence}/100
+PAIR_VOL_SENSITIVITY: ${report.engine.multiplier}x
 STANCE: ${report.metrics.stance}
 PRC: ${report.metrics.price} | VIX: ${report.metrics.vix}
 
@@ -61,13 +59,13 @@ PRC: ${report.metrics.price} | VIX: ${report.metrics.vix}
 1. Do not forecast.
 2. Counter-thesis must challenge structural assumptions only.
 3. Use only provided macro variables.
-4. If data is insufficient, report "STRUCTURAL UNCERTAINTY".
+4. If Confidence < 75, assume data is noisy.
 
 PROMPT: Provide a 3-point institutional-grade counter-thesis for this classification.`;
     
     navigator.clipboard.writeText(text);
     WebApp.HapticFeedback.notificationOccurred('success');
-    alert("Red-Team constraints staged for GPT.");
+    alert("V9.2 Red-Team constraints staged for GPT.");
   };
 
   useEffect(() => {
@@ -79,35 +77,48 @@ PROMPT: Provide a 3-point institutional-grade counter-thesis for this classifica
   return (
     <div style={{ padding: '20px', backgroundColor: '#000', color: '#fff', minHeight: '100vh', fontFamily: 'monospace', display: 'flex', flexDirection: 'column' }}>
       <header style={{ borderBottom: '1px solid #333', paddingBottom: '10px' }}>
-        <h2 style={{ margin: 0, color: '#00ff41' }}>WAN$ SENTINEL V9.1</h2>
-        <small style={{ color: '#666' }}>M1 LOCAL NODE: ONLINE</small>
+        <h2 style={{ margin: 0, color: '#00ff41', letterSpacing: '1px' }}>WAN$ SENTINEL V9.2</h2>
+        <small style={{ color: '#666' }}>MOS: INSTITUTIONAL GRADE</small>
       </header>
 
       <div style={{ flex: 1 }}>
         {loading ? (
-          <p style={{ marginTop: '40px', textAlign: 'center', color: '#00ff41' }}>[ ANALYZING {target}... ]</p>
+          <p style={{ marginTop: '40px', textAlign: 'center', color: '#00ff41' }}>[ EXECUTING DETERMINISTIC SCAN... ]</p>
         ) : report ? (
           <main style={{ marginTop: '20px' }}>
-            <div style={{ padding: '15px', border: '1px solid #00ff41', borderRadius: '4px', marginBottom: '15px' }}>
-              <h4 style={{ margin: '0 0 10px 0', color: '#00ff41' }}>{parseData(report.data, "REGIME")}</h4>
-              <p style={{ margin: 0 }}><b>POLICY STANCE:</b> {report.metrics.stance}</p>
+            {/* V9.2 REGIME & CONFIDENCE UI */}
+            <div style={{ padding: '15px', border: report.engine.confidence >= 75 ? '1px solid #00ff41' : '1px solid #ffaa00', borderRadius: '4px', marginBottom: '15px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <h4 style={{ margin: 0, color: report.engine.confidence >= 75 ? '#00ff41' : '#ffaa00' }}>
+                  {report.engine.deterministic_regime}
+                </h4>
+                <span style={{ fontSize: '0.8rem', backgroundColor: '#111', padding: '4px 8px', borderRadius: '4px' }}>
+                  CFD: {report.engine.confidence}%
+                </span>
+              </div>
+              <p style={{ margin: 0, fontSize: '0.85rem' }}>
+                <b>VOL MULTIPLIER:</b> {report.engine.multiplier}x | <b>STANCE:</b> {report.metrics.stance}
+              </p>
             </div>
+
             <div style={{ background: '#111', padding: '15px', borderRadius: '4px', borderLeft: '4px solid #00ff41' }}>
-              <p style={{ margin: 0, fontSize: '1.1rem', lineHeight: '1.4' }}>{parseData(report.data, "ALPHA")}</p>
+              <p style={{ margin: 0, fontSize: '1rem', lineHeight: '1.5' }}>{parseData(report.data, "ALPHA")}</p>
             </div>
+
             <footer style={{ marginTop: '20px', fontSize: '0.8rem', color: '#444' }}>
               PX: {report.metrics.price} | VIX: {report.metrics.vix} | REAL_R: 1.0%
             </footer>
           </main>
         ) : null}
 
+        {/* LOGS SECTION */}
         <div style={{ marginTop: '30px', borderTop: '1px solid #222', paddingTop: '15px' }}>
-          <small style={{ color: '#666', letterSpacing: '2px' }}>RECENT SENTINEL LOGS</small>
+          <small style={{ color: '#666', letterSpacing: '2px' }}>V9.2 DETERMINISTIC LOGS</small>
           {history.map((item, index) => (
-            <div key={index} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', padding: '8px 0', borderBottom: '1px solid #111' }}>
+            <div key={index} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', padding: '8px 0', borderBottom: '1px solid #111' }}>
               <span style={{ color: '#444' }}>{item.timestamp}</span>
               <span style={{ color: '#888' }}>{item.ticker}</span>
-              <span style={{ color: item.stance.includes('RISK') ? '#ff0055' : '#00ff41' }}>{item.stance}</span>
+              <span style={{ color: item.confidence >= 75 ? '#00ff41' : '#ffaa00' }}>{item.regime} ({item.confidence}%)</span>
             </div>
           ))}
         </div>
@@ -121,7 +132,7 @@ PROMPT: Provide a 3-point institutional-grade counter-thesis for this classifica
           placeholder="ENTER TICKER"
         />
         <button onClick={copyForConsult} style={{ width: '100%', padding: '15px', backgroundColor: '#111', color: '#00ff41', border: '1px solid #00ff41', fontWeight: 'bold' }}>
-          COPY FOR GPT CONSULT
+          COPY RED-TEAM PAYLOAD
         </button>
         <button onClick={() => scanMarket(target)} style={{ width: '100%', padding: '15px', marginTop: '10px', backgroundColor: '#00ff41', color: '#000', border: 'none', fontWeight: 'bold' }}>
           SCAN {target}
