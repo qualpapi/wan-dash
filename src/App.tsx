@@ -19,6 +19,20 @@ function App() {
       setReport(res.data);
       // Inside scanMarket...
 setReport(res.data);
+const copyForConsult = () => {
+  const text = `SENTINEL_V9.1_REPORT:
+REGIME: ${parseData(report.data, "REGIME")}
+STANCE: ${report.metrics.stance}
+GOLD: $${report.metrics.price}
+VIX: ${report.metrics.vix}
+
+PROMPT: Based on this 2026 Sovereign Debt tag, provide a 3-point counter-thesis.`;
+  
+  navigator.clipboard.writeText(text);
+  // Haptic feedback for that "Premium" feel
+  WebApp.HapticFeedback.notificationOccurred('success');
+  alert("Data staged for GPT consultation.");
+};
 
 // Add the new scan to the top of the history list
 const updatedHistory = [
@@ -79,6 +93,7 @@ localStorage.setItem('wan_history', JSON.stringify(updatedHistory));
           </footer>
         </main>
       ) : null}
+    
 {/* HISTORY TICKER */}
 <div style={{ marginTop: '30px', borderTop: '1px solid #222', paddingTop: '15px' }}>
   <small style={{ color: '#666', letterSpacing: '2px' }}>RECENT SENTINEL LOGS</small>
@@ -90,6 +105,24 @@ localStorage.setItem('wan_history', JSON.stringify(updatedHistory));
     </div>
   ))}
 </div>
+{/* --- START OF THE CONTROL STACK --- */}
+      <div style={{ marginTop: 'auto' }}> 
+        
+        {/* 1. COPY BUTTON (Place this first) */}
+        <button 
+          onClick={copyForConsult} 
+          style={{ 
+            width: '100%', 
+            padding: '15px', 
+            marginTop: '20px', 
+            backgroundColor: '#111', 
+            color: '#00ff41', 
+            border: '1px solid #00ff41',
+            fontWeight: 'bold' 
+          }}
+        >
+          COPY FOR GPT CONSULT
+        </button>
       <button onClick={() => scanMarket("AUDCHF=X")} 
         style={{ width: '100%', padding: '15px', marginTop: '30px', backgroundColor: '#00ff41', color: '#000', border: 'none', fontWeight: 'bold' }}>
         RE-SCAN LOCAL NODE
