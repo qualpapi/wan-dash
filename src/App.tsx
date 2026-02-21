@@ -7,13 +7,13 @@ const BRIDGE_URL = "https://expression-vernon-judgment-freight.trycloudflare.com
 function App() {
   const [report, setReport] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [target, setTarget] = useState("AUDCHF=X"); // The Dynamic Ticker State
+  const [target, setTarget] = useState("AUDCHF=X"); // Tracks current ticker in input
   const [history, setHistory] = useState<any[]>(() => {
     const saved = localStorage.getItem('wan_history');
     return saved ? JSON.parse(saved) : [];
   });
 
-  // REGEX PARSER: Extracts content after tags regardless of formatting
+  // REGEX PARSER: Extracts clean data from AI tags
   const parseData = (text: string, tag: string) => {
     if (!text) return "Scanning...";
     const regex = new RegExp(`${tag}:?\\s*(.*)`, 'i');
@@ -28,6 +28,7 @@ function App() {
       const newData = res.data;
       setReport(newData);
 
+      // PERSISTENCE: Save the current scan to the log
       const updatedHistory = [
         { 
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), 
@@ -36,14 +37,18 @@ function App() {
           ticker: pair 
         },
         ...history
-      ].slice(0, 5);
+      ].slice(0, 5); // Keep last 5 for performance
 
       setHistory(updatedHistory);
       localStorage.setItem('wan_history', JSON.stringify(updatedHistory));
-    } catch (e) { console.error(e); } finally { setLoading(false); }
+    } catch (e) { 
+      console.error("Bridge Error:", e); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
-  // GPT CONSULT LOGIC: Moved outside scanMarket for proper scope
+  // GPT CONSULT BRIDGE: Now correctly scoped outside of scanMarket
   const copyForConsult = () => {
     if (!report) return;
     const text = `SENTINEL_V9.1_REPORT:
@@ -55,14 +60,14 @@ PRC: ${report.metrics.price} | VIX: ${report.metrics.vix}
 PROMPT: Based on this 2026 Sovereign Debt tag, provide a 3-point counter-thesis.`;
     
     navigator.clipboard.writeText(text);
-    WebApp.HapticFeedback.notificationOccurred('success');
-    alert("Data staged for GPT consultation.");
+    WebApp.HapticFeedback.notificationOccurred('success'); // Haptic buzz
+    alert("Data copied! Ready for GPT consultation.");
   };
 
   useEffect(() => {
     WebApp.ready();
     WebApp.expand();
-    scanMarket(target);
+    scanMarket(target); // Initial scan on mount
   }, []);
 
   return (
@@ -74,7 +79,7 @@ PROMPT: Based on this 2026 Sovereign Debt tag, provide a 3-point counter-thesis.
 
       <div style={{ flex: 1 }}>
         {loading ? (
-          <p style={{ marginTop: '40px', textAlign: 'center' }}>[ ANALYZING {target}... ]</p>
+          <p style={{ marginTop: '40px', textAlign: 'center', color: '#00ff41' }}>[ ANALYZING {target}... ]</p>
         ) : report ? (
           <main style={{ marginTop: '20px' }}>
             <div style={{ padding: '15px', border: '1px solid #00ff41', borderRadius: '4px', marginBottom: '15px' }}>
@@ -90,24 +95,26 @@ PROMPT: Based on this 2026 Sovereign Debt tag, provide a 3-point counter-thesis.
           </main>
         ) : null}
 
+        {/* LOGS SECTION */}
         <div style={{ marginTop: '30px', borderTop: '1px solid #222', paddingTop: '15px' }}>
           <small style={{ color: '#666', letterSpacing: '2px' }}>RECENT SENTINEL LOGS</small>
           {history.map((item, index) => (
             <div key={index} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', padding: '8px 0', borderBottom: '1px solid #111' }}>
               <span style={{ color: '#444' }}>{item.timestamp}</span>
-              <span style={{ color: '#888' }}>{item.ticker || "AUDCHF=X"}</span>
-              <span style={{ color: item.stance?.includes('RISK') ? '#ff0055' : '#00ff41' }}>{item.stance}</span>
+              <span style={{ color: '#888' }}>{item.ticker}</span>
+              <span style={{ color: item.stance.includes('RISK') ? '#ff0055' : '#00ff41' }}>{item.stance}</span>
             </div>
           ))}
         </div>
       </div>
 
+      {/* MULTI-PAIR CONTROL STACK */}
       <div style={{ marginTop: 'auto', paddingBottom: '20px' }}>
         <input 
           value={target}
           onChange={(e) => setTarget(e.target.value.toUpperCase())}
-          style={{ width: '100%', padding: '15px', marginBottom: '10px', backgroundColor: '#111', color: '#00ff41', border: '1px solid #333', boxSizing: 'border-box', textAlign: 'center' }}
-          placeholder="ENTER TICKER"
+          style={{ width: '100%', padding: '15px', marginBottom: '10px', backgroundColor: '#111', color: '#00ff41', border: '1px solid #333', boxSizing: 'border-box', textAlign: 'center', fontFamily: 'monospace' }}
+          placeholder="ENTER TICKER (BTC-USD)"
         />
         <button onClick={copyForConsult} style={{ width: '100%', padding: '15px', backgroundColor: '#111', color: '#00ff41', border: '1px solid #00ff41', fontWeight: 'bold' }}>
           COPY FOR GPT CONSULT
