@@ -7,12 +7,31 @@ const BRIDGE_URL = "https://expression-vernon-judgment-freight.trycloudflare.com
 function App() {
   const [report, setReport] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [history, setHistory] = useState<any[]>(() => {
+  const saved = localStorage.getItem('wan_history');
+  return saved ? JSON.parse(saved) : [];
+});
 
   const scanMarket = async (pair: string) => {
     setLoading(true);
     try {
       const res = await axios.post(`${BRIDGE_URL}/analyze`, { pair });
       setReport(res.data);
+      // Inside scanMarket...
+setReport(res.data);
+
+// Add the new scan to the top of the history list
+const updatedHistory = [
+  { 
+    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), 
+    stance: res.data.metrics.stance, 
+    regime: parseData(res.data.data, "REGIME") 
+  },
+  ...history
+].slice(0, 5); // Only keep the last 5 scans to save space
+
+setHistory(updatedHistory);
+localStorage.setItem('wan_history', JSON.stringify(updatedHistory));
     } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
@@ -60,7 +79,17 @@ function App() {
           </footer>
         </main>
       ) : null}
-
+{/* HISTORY TICKER */}
+<div style={{ marginTop: '30px', borderTop: '1px solid #222', paddingTop: '15px' }}>
+  <small style={{ color: '#666', letterSpacing: '2px' }}>RECENT SENTINEL LOGS</small>
+  {history.map((item, index) => (
+    <div key={index} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', padding: '8px 0', borderBottom: '1px solid #111' }}>
+      <span style={{ color: '#444' }}>{item.timestamp}</span>
+      <span style={{ color: '#888' }}>{item.regime}</span>
+      <span style={{ color: item.stance.includes('RISK') ? '#ff0055' : '#00ff41' }}>{item.stance}</span>
+    </div>
+  ))}
+</div>
       <button onClick={() => scanMarket("AUDCHF=X")} 
         style={{ width: '100%', padding: '15px', marginTop: '30px', backgroundColor: '#00ff41', color: '#000', border: 'none', fontWeight: 'bold' }}>
         RE-SCAN LOCAL NODE
