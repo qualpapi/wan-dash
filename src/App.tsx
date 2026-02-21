@@ -13,7 +13,7 @@ function App() {
     return saved ? JSON.parse(saved) : [];
   });
 
-  // REGEX PARSER: Extracts clean data from Llama's text
+  // REGEX PARSER: Extracts content after tags regardless of formatting
   const parseData = (text: string, tag: string) => {
     if (!text) return "Scanning...";
     const regex = new RegExp(`${tag}:?\\s*(.*)`, 'i');
@@ -28,40 +28,35 @@ function App() {
       const newData = res.data;
       setReport(newData);
 
-      // PERSISTENCE: Record the scan to history
       const updatedHistory = [
         { 
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), 
           stance: newData.metrics.stance, 
           regime: parseData(newData.data, "REGIME"),
-          ticker: pair // Added ticker to history log
+          ticker: pair 
         },
         ...history
       ].slice(0, 5);
 
       setHistory(updatedHistory);
       localStorage.setItem('wan_history', JSON.stringify(updatedHistory));
-    } catch (e) { 
-      console.error("Bridge Error:", e); 
-    } finally { 
-      setLoading(false); 
-    }
+    } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
+  // GPT CONSULT LOGIC: Moved outside scanMarket for proper scope
   const copyForConsult = () => {
     if (!report) return;
     const text = `SENTINEL_V9.1_REPORT:
 TICKER: ${target}
 REGIME: ${parseData(report.data, "REGIME")}
 STANCE: ${report.metrics.stance}
-GOLD: $${report.metrics.price}
-VIX: ${report.metrics.vix}
+PRC: ${report.metrics.price} | VIX: ${report.metrics.vix}
 
-PROMPT: Provide a 3-point counter-thesis for this 2026 Sovereign Debt tag.`;
+PROMPT: Based on this 2026 Sovereign Debt tag, provide a 3-point counter-thesis.`;
     
     navigator.clipboard.writeText(text);
     WebApp.HapticFeedback.notificationOccurred('success');
-    alert("Copied to clipboard for GPT!");
+    alert("Data staged for GPT consultation.");
   };
 
   useEffect(() => {
@@ -79,53 +74,44 @@ PROMPT: Provide a 3-point counter-thesis for this 2026 Sovereign Debt tag.`;
 
       <div style={{ flex: 1 }}>
         {loading ? (
-          <div style={{ marginTop: '40px', textAlign: 'center' }}>
-            <p style={{ color: '#00ff41' }}>[ ANALYZING {target}... ]</p>
-            <progress style={{ width: '100%' }}></progress>
-          </div>
+          <p style={{ marginTop: '40px', textAlign: 'center' }}>[ ANALYZING {target}... ]</p>
         ) : report ? (
           <main style={{ marginTop: '20px' }}>
             <div style={{ padding: '15px', border: '1px solid #00ff41', borderRadius: '4px', marginBottom: '15px' }}>
               <h4 style={{ margin: '0 0 10px 0', color: '#00ff41' }}>{parseData(report.data, "REGIME")}</h4>
               <p style={{ margin: 0 }}><b>POLICY STANCE:</b> {report.metrics.stance}</p>
             </div>
-
             <div style={{ background: '#111', padding: '15px', borderRadius: '4px', borderLeft: '4px solid #00ff41' }}>
               <p style={{ margin: 0, fontSize: '1.1rem', lineHeight: '1.4' }}>{parseData(report.data, "ALPHA")}</p>
             </div>
-
             <footer style={{ marginTop: '20px', fontSize: '0.8rem', color: '#444' }}>
               PX: {report.metrics.price} | VIX: {report.metrics.vix} | REAL_R: 1.0%
             </footer>
           </main>
         ) : null}
 
-        {/* LOGS SECTION */}
         <div style={{ marginTop: '30px', borderTop: '1px solid #222', paddingTop: '15px' }}>
           <small style={{ color: '#666', letterSpacing: '2px' }}>RECENT SENTINEL LOGS</small>
           {history.map((item, index) => (
-            <div key={index} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', padding: '8px 0', borderBottom: '1px solid #111' }}>
+            <div key={index} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', padding: '8px 0', borderBottom: '1px solid #111' }}>
               <span style={{ color: '#444' }}>{item.timestamp}</span>
-              <span style={{ color: '#888' }}>{item.ticker}</span>
-              <span style={{ color: item.stance.includes('RISK') ? '#ff0055' : '#00ff41' }}>{item.stance}</span>
+              <span style={{ color: '#888' }}>{item.ticker || "AUDCHF=X"}</span>
+              <span style={{ color: item.stance?.includes('RISK') ? '#ff0055' : '#00ff41' }}>{item.stance}</span>
             </div>
           ))}
         </div>
       </div>
 
-      {/* MULTI-PAIR CONTROL STACK */}
-      <div style={{ paddingBottom: '20px', marginTop: '20px' }}>
+      <div style={{ marginTop: 'auto', paddingBottom: '20px' }}>
         <input 
           value={target}
           onChange={(e) => setTarget(e.target.value.toUpperCase())}
-          style={{ width: '100%', padding: '15px', marginBottom: '10px', backgroundColor: '#111', color: '#00ff41', border: '1px solid #333', boxSizing: 'border-box', fontFamily: 'monospace', textAlign: 'center' }}
-          placeholder="ENTER TICKER (e.g. BTC-USD)"
+          style={{ width: '100%', padding: '15px', marginBottom: '10px', backgroundColor: '#111', color: '#00ff41', border: '1px solid #333', boxSizing: 'border-box', textAlign: 'center' }}
+          placeholder="ENTER TICKER"
         />
-        
         <button onClick={copyForConsult} style={{ width: '100%', padding: '15px', backgroundColor: '#111', color: '#00ff41', border: '1px solid #00ff41', fontWeight: 'bold' }}>
           COPY FOR GPT CONSULT
         </button>
-        
         <button onClick={() => scanMarket(target)} style={{ width: '100%', padding: '15px', marginTop: '10px', backgroundColor: '#00ff41', color: '#000', border: 'none', fontWeight: 'bold' }}>
           SCAN {target}
         </button>
