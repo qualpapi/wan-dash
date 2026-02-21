@@ -50,19 +50,25 @@ function App() {
 
   // GPT CONSULT BRIDGE: Now correctly scoped outside of scanMarket
   const copyForConsult = () => {
-    if (!report) return;
-    const text = `SENTINEL_V9.1_REPORT:
+  if (!report) return;
+  const text = `SENTINEL_V9.1_REPORT:
 TICKER: ${target}
 REGIME: ${parseData(report.data, "REGIME")}
 STANCE: ${report.metrics.stance}
 PRC: ${report.metrics.price} | VIX: ${report.metrics.vix}
 
-PROMPT: Based on this 2026 Sovereign Debt tag, provide a 3-point counter-thesis.`;
-    
-    navigator.clipboard.writeText(text);
-    WebApp.HapticFeedback.notificationOccurred('success'); // Haptic buzz
-    alert("Data copied! Ready for GPT consultation.");
-  };
+[SYSTEM_CONSTRAINTS]
+1. Do not forecast.
+2. Counter-thesis must challenge structural assumptions only.
+3. Use only provided macro variables.
+4. If data is insufficient, report "STRUCTURAL UNCERTAINTY".
+
+PROMPT: Provide a 3-point institutional-grade counter-thesis for this classification.`;
+  
+  navigator.clipboard.writeText(text);
+  WebApp.HapticFeedback.notificationOccurred('success');
+  alert("Red-Team constraints staged for GPT.");
+};
 
   useEffect(() => {
     WebApp.ready();
