@@ -7,13 +7,13 @@ const BRIDGE_URL = "https://expression-vernon-judgment-freight.trycloudflare.com
 function App() {
   const [report, setReport] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [target, setTarget] = useState("AUDCHF=X"); // Tracks current ticker in input
+  const [target, setTarget] = useState("USDJPY=X"); // Tracks current ticker
   const [history, setHistory] = useState<any[]>(() => {
     const saved = localStorage.getItem('wan_history');
     return saved ? JSON.parse(saved) : [];
   });
 
-  // REGEX PARSER: Extracts clean data from AI tags
+  // REGEX PARSER: Extracts clean data from Llama's tags
   const parseData = (text: string, tag: string) => {
     if (!text) return "Scanning...";
     const regex = new RegExp(`${tag}:?\\s*(.*)`, 'i');
@@ -28,7 +28,7 @@ function App() {
       const newData = res.data;
       setReport(newData);
 
-      // PERSISTENCE: Save the current scan to the log
+      // PERSISTENCE: Record the scan to history
       const updatedHistory = [
         { 
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), 
@@ -37,7 +37,7 @@ function App() {
           ticker: pair 
         },
         ...history
-      ].slice(0, 5); // Keep last 5 for performance
+      ].slice(0, 5);
 
       setHistory(updatedHistory);
       localStorage.setItem('wan_history', JSON.stringify(updatedHistory));
@@ -48,10 +48,10 @@ function App() {
     }
   };
 
-  // GPT CONSULT BRIDGE: Now correctly scoped outside of scanMarket
+  // GPT CONSULT BRIDGE: Now includes Red-Team Constraints
   const copyForConsult = () => {
-  if (!report) return;
-  const text = `SENTINEL_V9.1_REPORT:
+    if (!report) return;
+    const text = `SENTINEL_V9.1_REPORT:
 TICKER: ${target}
 REGIME: ${parseData(report.data, "REGIME")}
 STANCE: ${report.metrics.stance}
@@ -64,16 +64,16 @@ PRC: ${report.metrics.price} | VIX: ${report.metrics.vix}
 4. If data is insufficient, report "STRUCTURAL UNCERTAINTY".
 
 PROMPT: Provide a 3-point institutional-grade counter-thesis for this classification.`;
-  
-  navigator.clipboard.writeText(text);
-  WebApp.HapticFeedback.notificationOccurred('success');
-  alert("Red-Team constraints staged for GPT.");
-};
+    
+    navigator.clipboard.writeText(text);
+    WebApp.HapticFeedback.notificationOccurred('success');
+    alert("Red-Team constraints staged for GPT.");
+  };
 
   useEffect(() => {
     WebApp.ready();
     WebApp.expand();
-    scanMarket(target); // Initial scan on mount
+    scanMarket(target);
   }, []);
 
   return (
@@ -101,7 +101,6 @@ PROMPT: Provide a 3-point institutional-grade counter-thesis for this classifica
           </main>
         ) : null}
 
-        {/* LOGS SECTION */}
         <div style={{ marginTop: '30px', borderTop: '1px solid #222', paddingTop: '15px' }}>
           <small style={{ color: '#666', letterSpacing: '2px' }}>RECENT SENTINEL LOGS</small>
           {history.map((item, index) => (
@@ -114,13 +113,12 @@ PROMPT: Provide a 3-point institutional-grade counter-thesis for this classifica
         </div>
       </div>
 
-      {/* MULTI-PAIR CONTROL STACK */}
       <div style={{ marginTop: 'auto', paddingBottom: '20px' }}>
         <input 
           value={target}
           onChange={(e) => setTarget(e.target.value.toUpperCase())}
           style={{ width: '100%', padding: '15px', marginBottom: '10px', backgroundColor: '#111', color: '#00ff41', border: '1px solid #333', boxSizing: 'border-box', textAlign: 'center', fontFamily: 'monospace' }}
-          placeholder="ENTER TICKER (BTC-USD)"
+          placeholder="ENTER TICKER"
         />
         <button onClick={copyForConsult} style={{ width: '100%', padding: '15px', backgroundColor: '#111', color: '#00ff41', border: '1px solid #00ff41', fontWeight: 'bold' }}>
           COPY FOR GPT CONSULT
