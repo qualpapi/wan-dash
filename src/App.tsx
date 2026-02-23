@@ -4,7 +4,7 @@ import WebApp from '@twa-dev/sdk';
 import axios from 'axios';
 
 // IMPORTANT: Update this every time you restart your Cloudflare Tunnel!
-const BRIDGE_URL = "https://expression-vernon-judgment-freight.trycloudflare.com";
+const BRIDGE_URL = import.meta.env.VITE_BRIDGE_URL;
 
 function App() {
   const [report, setReport] = useState<any>(null);
