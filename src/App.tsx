@@ -16,20 +16,27 @@ function App() {
     return saved ? JSON.parse(saved) : [];
   });
 
-  const scanMarket = async (pair: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await axios.post(`${BRIDGE_URL}/analyze`, { pair });
-      setReport(res.data);
-      const log = { time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), ticker: pair, cvc: res.data.scorecard.conviction, kssi: res.data.scorecard.kenya_stress };
-      const newHistory = [log, ...history].slice(0, 5);
-      setHistory(newHistory);
-      localStorage.setItem('wan_v94_logs', JSON.stringify(newHistory));
-    } catch (e: any) {
-      setError(e.message || "Sentinel Node Unreachable. Check Tunnel URL.");
-    } finally { setLoading(false); }
-  };
+ const scanMarket = async (pair: string) => {
+  setLoading(true);
+  setError(null);
+  try {
+    const res = await axios.post(`${BRIDGE_URL}/analyze`, { pair });
+    setReport(res.data);
+
+    const log = {
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      ticker: pair,
+      cvc: res.data.scorecard.cvc,      // from bridge.py
+      kssi: res.data.scorecard.k_ssi,   // from bridge.py
+    };
+
+    const newHistory = [log, ...history].slice(0, 5);
+    setHistory(newHistory);
+    localStorage.setItem('wan_v94_logs', JSON.stringify(newHistory));
+  } catch (e: any) {
+    setError(e.message || "Sentinel Node Unreachable. Check Tunnel URL.");
+  } finally { setLoading(false); }
+};
 
   const copyForAudit = () => {
     if (!report) return;
@@ -56,16 +63,41 @@ function App() {
         <main>
           <div style={{ padding: '15px', border: '1px solid #333', backgroundColor: '#0a0a0a', marginBottom: '15px' }}>
             <h4 style={{ margin: '0 0 10px 0', color: '#00ff41' }}>{report.scorecard.regime}</h4>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>CONVICTION:</span>
-              <span>{Array(4).fill(0).map((_, i) => (
-                <span key={i} style={{ display: 'inline-block', width: '15px', height: '8px', background: i < report.scorecard.conviction ? '#00ff41' : '#222', marginLeft: '4px' }}></span>
-              ))}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', color: report.scorecard.kenya_stress >= 3 ? '#f00' : '#888' }}>
-              <span>KENYA STRESS (K-SSI):</span>
-              <span>{report.scorecard.kenya_stress}/4</span>
-            </div>
+            {(() => {
+  const kSsi = typeof report.scorecard.k_ssi === 'number' ? report.scorecard.k_ssi : 0;
+  const calculatedConviction = Math.max(0, Math.min(4, 4 - kSsi));
+
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+      <span>CONVICTION:</span>
+      <span>
+        {Array(4).fill(0).map((_, i) => (
+          <span
+            key={i}
+            style={{
+              display: 'inline-block',
+              width: '15px',
+              height: '8px',
+              background: i < calculatedConviction ? '#00ff41' : '#222',
+              marginLeft: '4px',
+            }}
+          ></span>
+        ))}
+      </span>
+    </div>
+  );
+})()}
+            <div
+  style={{
+    display: 'flex',
+    justifyContent: 'space-between',
+    marginTop: '10px',
+    color: report.scorecard.k_ssi >= 3 ? '#f00' : '#888',
+  }}
+>
+  <span>KENYA STRESS (K-SSI):</span>
+  <span>{report.scorecard.k_ssi}/4</span>
+</div>
           </div>
           <div style={{ padding: '15px', background: '#111', borderLeft: '4px solid #00ff41', fontSize: '0.9rem' }}>
             {report.analysis}
