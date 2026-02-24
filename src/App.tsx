@@ -4,7 +4,8 @@ import WebApp from '@twa-dev/sdk';
 import axios from 'axios';
 
 // IMPORTANT: Update this every time you restart your Cloudflare Tunnel!
-const BRIDGE_URL = import.meta.env.VITE_BRIDGE_URL;
+const RAW_BRIDGE_URL = import.meta.env.VITE_BRIDGE_URL || "";
+const BRIDGE_URL = RAW_BRIDGE_URL.endsWith('/') ? RAW_BRIDGE_URL.slice(0, -1) : RAW_BRIDGE_URL;
 
 function App() {
   const [report, setReport] = useState<any>(null);
@@ -20,6 +21,9 @@ function App() {
     setLoading(true);
     setError(null);
     try {
+      if (!BRIDGE_URL) {
+        throw new Error("BRIDGE_URL is not defined in environment.");
+      }
       const res = await axios.post(`${BRIDGE_URL}/analyze`, { pair });
       setReport(res.data);
 
