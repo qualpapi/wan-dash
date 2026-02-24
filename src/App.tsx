@@ -33,6 +33,8 @@ function App() {
         cvc: res.data.scorecard.cvc,
         kssi: res.data.scorecard.k_ssi,
         vel: res.data.scorecard.velocity || 0,
+        vega: res.data.scorecard.vega || 0,
+        skew: res.data.scorecard.skew || 0,
       };
 
       const newHistory = [log, ...history].slice(0, 5);
@@ -56,7 +58,22 @@ function App() {
 
   return (
     <div style={{ padding: '20px', backgroundColor: '#000', color: '#fff', minHeight: '100vh', fontFamily: 'monospace' }}>
-      <h2 style={{ color: '#00ff41', borderBottom: '1px solid #333', paddingBottom: '10px' }}>WAN$ SENTINEL V9.4</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #333', paddingBottom: '10px' }}>
+        <h2 style={{ color: '#00ff41', margin: 0 }}>WAN$ SENTINEL V9.7</h2>
+        {report && (
+          <div style={{ 
+            padding: '4px 8px', 
+            borderRadius: '4px', 
+            fontSize: '0.7rem', 
+            fontWeight: 'bold',
+            backgroundColor: report.scorecard.macro_sync === 'GREEN' ? '#003300' : (report.scorecard.macro_sync === 'RED' ? '#330000' : '#333300'),
+            color: report.scorecard.macro_sync === 'GREEN' ? '#00ff41' : (report.scorecard.macro_sync === 'RED' ? '#ff0000' : '#ffff00'),
+            border: `1px solid ${report.scorecard.macro_sync === 'GREEN' ? '#00ff41' : (report.scorecard.macro_sync === 'RED' ? '#ff0000' : '#ffff00')}`
+          }}>
+            MACRO-SYNC: {report.scorecard.macro_sync}
+          </div>
+        )}
+      </div>
       
       {error && (
         <div style={{ padding: '15px', background: '#300', border: '1px solid #f00', color: '#f00', marginBottom: '20px', fontSize: '0.8rem' }}>
@@ -68,6 +85,13 @@ function App() {
         <p style={{ textAlign: 'center', color: '#00ff41' }}>[ CALCULATING SOVEREIGN VECTORS... ]</p>
       ) : report && (
         <main>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.7rem', color: '#888' }}>
+            <span>VIX: {report.metrics.vix}</span>
+            <span>DXY: {report.metrics.dxy}</span>
+            <span>SPREAD: {report.metrics.curve}</span>
+            <span>VEGA: {report.metrics.vega}</span>
+            <span>SKEW: {report.metrics.skew}</span>
+          </div>
           <div style={{ padding: '15px', border: '1px solid #333', backgroundColor: '#0a0a0a', marginBottom: '15px' }}>
             <h4 style={{ margin: '0 0 10px 0', color: '#00ff41' }}>{report.scorecard.regime}</h4>
             {(() => {
@@ -115,8 +139,28 @@ function App() {
                     {report.scorecard.velocity > 0 ? '▲' : '▼'} {Math.abs(report.scorecard.velocity)}
                   </span>
                 )}
+                {report.scorecard.beta !== undefined && (
+                  <div style={{ fontSize: '0.6rem', color: '#666', marginTop: '2px' }}>
+                    $\beta$ = {report.scorecard.beta} | $r$ = {report.scorecard.pearson_r}
+                  </div>
+                )}
               </div>
             </div>
+
+            {report.scorecard.capacity !== "NORMAL" && (
+              <div style={{ 
+                marginTop: '10px', 
+                padding: '8px', 
+                backgroundColor: '#330000', 
+                border: '1px solid #ff0000', 
+                color: '#ff0000', 
+                fontSize: '0.7rem',
+                textAlign: 'center',
+                fontWeight: 'bold'
+              }}>
+                [ ALERT: {report.scorecard.capacity} ]
+              </div>
+            )}
           </div>
           <div style={{ padding: '15px', background: '#111', borderLeft: '4px solid #00ff41', fontSize: '0.9rem' }}>
             {report.analysis}
@@ -130,7 +174,7 @@ function App() {
           <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', padding: '5px 0', color: '#666' }}>
             <span>{h.time}</span><span>{h.ticker}</span>
             <span>
-              CVC:{h.cvc} | K-SSI:{h.kssi} 
+              CVC:{h.cvc} | K-SSI:{h.kssi} | V:{h.vega} | S:{h.skew}
               {h.vel !== 0 && (
                 <span style={{ color: h.vel > 0 ? '#f00' : '#00ff41', marginLeft: '4px' }}>
                   ({h.vel > 0 ? '+' : ''}{h.vel})
