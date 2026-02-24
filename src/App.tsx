@@ -32,6 +32,7 @@ function App() {
         ticker: pair,
         cvc: res.data.scorecard.cvc,
         kssi: res.data.scorecard.k_ssi,
+        vel: res.data.scorecard.velocity || 0,
       };
 
       const newHistory = [log, ...history].slice(0, 5);
@@ -70,40 +71,52 @@ function App() {
           <div style={{ padding: '15px', border: '1px solid #333', backgroundColor: '#0a0a0a', marginBottom: '15px' }}>
             <h4 style={{ margin: '0 0 10px 0', color: '#00ff41' }}>{report.scorecard.regime}</h4>
             {(() => {
-  const kSsi = typeof report.scorecard.k_ssi === 'number' ? report.scorecard.k_ssi : 0;
-  const calculatedConviction = Math.max(0, Math.min(4, 4 - kSsi));
+              const rawCvc = typeof report.scorecard.cvc === 'number' ? report.scorecard.cvc : 0;
+              const kSsi = typeof report.scorecard.k_ssi === 'number' ? report.scorecard.k_ssi : 0;
+              const netConviction = Math.max(0, rawCvc - kSsi);
 
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-      <span>CONVICTION:</span>
-      <span>
-        {Array(4).fill(0).map((_, i) => (
-          <span
-            key={i}
-            style={{
-              display: 'inline-block',
-              width: '15px',
-              height: '8px',
-              background: i < calculatedConviction ? '#00ff41' : '#222',
-              marginLeft: '4px',
-            }}
-          ></span>
-        ))}
-      </span>
-    </div>
-  );
-})()}
+              return (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>CONVICTION:</span>
+                  <span>
+                    {Array(4).fill(0).map((_, i) => (
+                      <span
+                        key={i}
+                        style={{
+                          display: 'inline-block',
+                          width: '15px',
+                          height: '8px',
+                          background: i < netConviction ? '#00ff41' : '#222',
+                          marginLeft: '4px',
+                        }}
+                      ></span>
+                    ))}
+                  </span>
+                </div>
+              );
+            })()}
             <div
-  style={{
-    display: 'flex',
-    justifyContent: 'space-between',
-    marginTop: '10px',
-    color: report.scorecard.k_ssi >= 3 ? '#f00' : '#888',
-  }}
->
-  <span>KENYA STRESS (K-SSI):</span>
-  <span>{report.scorecard.k_ssi}/4</span>
-</div>
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                marginTop: '10px',
+                color: report.scorecard.k_ssi >= 3 ? '#f00' : '#888',
+              }}
+            >
+              <span>KENYA STRESS (K-SSI):</span>
+              <div style={{ textAlign: 'right' }}>
+                <span>{report.scorecard.k_ssi}/4</span>
+                {report.scorecard.velocity !== 0 && (
+                  <span style={{ 
+                    marginLeft: '8px', 
+                    fontSize: '0.7rem', 
+                    color: report.scorecard.velocity > 0 ? '#f00' : '#00ff41' 
+                  }}>
+                    {report.scorecard.velocity > 0 ? '▲' : '▼'} {Math.abs(report.scorecard.velocity)}
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
           <div style={{ padding: '15px', background: '#111', borderLeft: '4px solid #00ff41', fontSize: '0.9rem' }}>
             {report.analysis}
@@ -115,7 +128,15 @@ function App() {
         <small style={{ color: '#444' }}>SOVEREIGN LOGS</small>
         {history.map((h, i) => (
           <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', padding: '5px 0', color: '#666' }}>
-            <span>{h.time}</span><span>{h.ticker}</span><span>CVC:{h.cvc} | K-SSI:{h.kssi}</span>
+            <span>{h.time}</span><span>{h.ticker}</span>
+            <span>
+              CVC:{h.cvc} | K-SSI:{h.kssi} 
+              {h.vel !== 0 && (
+                <span style={{ color: h.vel > 0 ? '#f00' : '#00ff41', marginLeft: '4px' }}>
+                  ({h.vel > 0 ? '+' : ''}{h.vel})
+                </span>
+              )}
+            </span>
           </div>
         ))}
       </div>
