@@ -16,31 +16,33 @@ function App() {
     return saved ? JSON.parse(saved) : [];
   });
 
- const scanMarket = async (pair: string) => {
-  setLoading(true);
-  setError(null);
-  try {
-    const res = await axios.post(`${BRIDGE_URL}/analyze`, { pair });
-    setReport(res.data);
+  const scanMarket = async (pair: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await axios.post(`${BRIDGE_URL}/analyze`, { pair });
+      setReport(res.data);
 
-    const log = {
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      ticker: pair,
-      cvc: res.data.scorecard.cvc,      // from bridge.py
-      kssi: res.data.scorecard.k_ssi,   // from bridge.py
-    };
+      const log = {
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        ticker: pair,
+        cvc: res.data.scorecard.cvc,
+        kssi: res.data.scorecard.k_ssi,
+      };
 
-    const newHistory = [log, ...history].slice(0, 5);
-    setHistory(newHistory);
-    localStorage.setItem('wan_v94_logs', JSON.stringify(newHistory));
-  } catch (e: any) {
-    setError(e.message || "Sentinel Node Unreachable. Check Tunnel URL.");
-  } finally { setLoading(false); }
-};
+      const newHistory = [log, ...history].slice(0, 5);
+      setHistory(newHistory);
+      localStorage.setItem('wan_v94_logs', JSON.stringify(newHistory));
+    } catch (e: any) {
+      setError(e.message || "Sentinel Node Unreachable. Check Tunnel URL.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const copyForAudit = () => {
     if (!report) return;
-    const text = `SENTINEL_V9.4_AUDIT: ${target} | CVC: ${report.scorecard.conviction}/4 | K-SSI: ${report.scorecard.kenya_stress}/4.`;
+    const text = `SENTINEL_V9.4_AUDIT: ${target} | CVC: ${report.scorecard.cvc}/4 | K-SSI: ${report.scorecard.k_ssi}/4.`;
     navigator.clipboard.writeText(text);
     alert("Audit Copied.");
   };
