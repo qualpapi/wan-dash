@@ -12,8 +12,9 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [target, setTarget] = useState("USDJPY=X");
+  const [tradeRegime, setTradeRegime] = useState('EM_SOVEREIGN'); // Bimodal State
   const [history, setHistory] = useState<any[]>(() => {
-    const saved = localStorage.getItem('wan_v94_logs');
+    const saved = localStorage.getItem('wan_v12_logs');
     return saved ? JSON.parse(saved) : [];
   });
 
@@ -24,22 +25,23 @@ function App() {
       if (!BRIDGE_URL) {
         throw new Error("BRIDGE_URL is not defined in environment.");
       }
-      const res = await axios.post(`${BRIDGE_URL}/analyze`, { pair });
+      const res = await axios.post(`${BRIDGE_URL}/analyze`, { pair, regime: tradeRegime });
       setReport(res.data);
 
       const log = {
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         ticker: pair,
+        regime: tradeRegime,
         cvc: res.data.scorecard.cvc,
         kssi: res.data.scorecard.k_ssi,
         vel: res.data.scorecard.velocity || 0,
         vega: res.data.scorecard.vega || 0,
-        skew: res.data.scorecard.skew || 0,
+        elast: res.data.scorecard.elasticity || 0,  
       };
 
       const newHistory = [log, ...history].slice(0, 5);
       setHistory(newHistory);
-      localStorage.setItem('wan_v94_logs', JSON.stringify(newHistory));
+      localStorage.setItem('wan_v12_logs', JSON.stringify(newHistory));
     } catch (e: any) {
       setError(e.message || "Sentinel Node Unreachable. Check Tunnel URL.");
     } finally {
@@ -58,9 +60,47 @@ function App() {
 
   return (
     <div style={{ padding: '20px', backgroundColor: '#000', color: '#fff', minHeight: '100vh', fontFamily: 'monospace' }}>
+      {/* Bimodal Toggle */}
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+        <button 
+          onClick={() => setTradeRegime('EM_SOVEREIGN')}
+          style={{
+            flex: 1, padding: '8px', cursor: 'pointer',
+            backgroundColor: tradeRegime === 'EM_SOVEREIGN' ? '#00ff41' : '#111',
+            color: tradeRegime === 'EM_SOVEREIGN' ? '#000' : '#888',
+            border: '1px solid #333', fontWeight: 'bold', fontSize: '0.7rem'
+          }}
+        >
+          EM_SOVEREIGN
+        </button>
+        <button 
+          onClick={() => setTradeRegime('G7_TACTICAL')}
+          style={{
+            flex: 1, padding: '8px', cursor: 'pointer',
+            backgroundColor: tradeRegime === 'G7_TACTICAL' ? '#00ff41' : '#111',
+            color: tradeRegime === 'G7_TACTICAL' ? '#000' : '#888',
+            border: '1px solid #333', fontWeight: 'bold', fontSize: '0.7rem'
+          }}
+        >
+          G7_TACTICAL
+        </button>
+      </div>
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #333', paddingBottom: '10px' }}>
-        <h2 style={{ color: '#00ff41', margin: 0 }}>WAN$ SENTINEL V9.7</h2>
-        {report && (
+        <div>
+          <h2 style={{ color: '#00ff41', margin: 0 }}>WAN$ SENTINEL V12.0</h2>
+          {report && tradeRegime === 'EM_SOVEREIGN' && (
+            <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: report.scorecard.posture === 'OFFENSIVE' ? '#00ff41' : (report.scorecard.posture === 'DEFENSIVE' ? '#ff0000' : '#ffff00') }}>
+              POSTURE: [{report.scorecard.posture}]
+            </div>
+          )}
+          {report && tradeRegime === 'G7_TACTICAL' && (
+            <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#00ff41' }}>
+              MODE: [G7_TACTICAL_SNIPER]
+            </div>
+          )}
+        </div>
+        {report && tradeRegime === 'EM_SOVEREIGN' && (
           <div style={{ 
             padding: '4px 8px', 
             borderRadius: '4px', 
@@ -87,10 +127,18 @@ function App() {
         <main>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.7rem', color: '#888' }}>
             <span>VIX: {report.metrics.vix}</span>
-            <span>DXY: {report.metrics.dxy}</span>
-            <span>SPREAD: {report.metrics.curve}</span>
-            <span>VEGA: {report.metrics.vega}</span>
-            <span>SKEW: {report.metrics.skew}</span>
+            {tradeRegime === 'EM_SOVEREIGN' ? (
+              <>
+                <span>DXY: {report.metrics.dxy}</span>
+                <span>SPREAD: {report.metrics.curve}</span>
+              </>
+            ) : (
+              <>
+                <span>VEGA: {report.metrics.vega}</span>
+                <span>ELAST: {report.metrics.elasticity}</span>
+                <span>SKEW: {report.metrics.skew}</span>
+              </>
+            )}
           </div>
           <div style={{ padding: '15px', border: '1px solid #333', backgroundColor: '#0a0a0a', marginBottom: '15px' }}>
             <h4 style={{ margin: '0 0 10px 0', color: '#00ff41' }}>{report.scorecard.regime}</h4>
@@ -139,9 +187,9 @@ function App() {
                     {report.scorecard.velocity > 0 ? '▲' : '▼'} {Math.abs(report.scorecard.velocity)}
                   </span>
                 )}
-                {report.scorecard.beta !== undefined && (
+                {report.scorecard.shifted_r !== undefined && (
                   <div style={{ fontSize: '0.6rem', color: '#666', marginTop: '2px' }}>
-                    $\beta$ = {report.scorecard.beta} | $r$ = {report.scorecard.pearson_r}
+                    $\beta$ = {report.scorecard.beta} | Lag-$r$ = {report.scorecard.shifted_r.r_10d}
                   </div>
                 )}
               </div>
@@ -174,7 +222,11 @@ function App() {
           <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', padding: '5px 0', color: '#666' }}>
             <span>{h.time}</span><span>{h.ticker}</span>
             <span>
-              CVC:{h.cvc} | K-SSI:{h.kssi} | V:{h.vega} | S:{h.skew}
+              {h.regime === 'EM_SOVEREIGN' ? (
+                <>CVC:{h.cvc} | K-SSI:{h.kssi}</>
+              ) : (
+                <>CVC:{h.cvc} | V:{h.vega} | S:{h.skew}</>
+              )}
               {h.vel !== 0 && (
                 <span style={{ color: h.vel > 0 ? '#f00' : '#00ff41', marginLeft: '4px' }}>
                   ({h.vel > 0 ? '+' : ''}{h.vel})
